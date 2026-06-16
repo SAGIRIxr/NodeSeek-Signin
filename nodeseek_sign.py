@@ -169,9 +169,6 @@ def delete_ql_env(var_name: str):
         else:
             print(f"未找到环境变量: {var_name}")
             return True
-    except (TurnstileSolverError, YesCaptchaSolverError) as e:
-        print(f"验证码解析错误: {e}")
-        return None
     except Exception as e:
         print(f"删除环境变量异常: {str(e)}")
         return False
@@ -650,7 +647,9 @@ if __name__ == "__main__":
         print("\n==== 处理完毕，保存更新后的Cookie ====")
         all_cookies_new = "&".join([c for c in cookie_list if c.strip()])
         try:
-            save_cookie("NS_COOKIE", all_cookies_new)
-            print("所有Cookie已成功保存")
+            if save_cookie("NS_COOKIE", all_cookies_new):
+                print("所有Cookie已成功保存")
+            else:
+                print("Cookie未保存（当前环境不支持保存或保存失败，详见上方日志）")
         except Exception as e:
             print(f"保存Cookie变量异常: {e}")
