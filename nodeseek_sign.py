@@ -2,12 +2,77 @@
 
 import os
 import time
-import json
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 from curl_cffi import requests
 from yescaptcha import YesCaptchaSolver, YesCaptchaSolverError
 from turnstile_solver import TurnstileSolver, TurnstileSolverError
+
+def _get_env_str(name: str, default: str = "") -> str:
+    """读取环境变量并去掉空白；若为空字符串则回退 default。"""
+    v = os.getenv(name)
+    if v is None:
+        return default
+    v = str(v).strip()
+    return v if v else default
+
+
+def _get_impersonate_candidates() -> list[str]:
+    """生成 curl_cffi impersonate 版本候选列表。
+    """
+    primary = _get_env_str("NS_IMPERSONATE", "")
+    defaults = [
+    # Chrome (Desktop)
+    "chrome99",
+    "chrome100",
+    "chrome101",
+    "chrome104",
+    "chrome107",
+    "chrome110",
+    "chrome116",
+    "chrome119",
+    "chrome120",
+    "chrome123",
+    "chrome124",
+    "chrome131",
+    "chrome133a",
+    "chrome136",
+
+    # Chrome (Android)
+    "chrome99_android",
+    "chrome131_android",
+
+    # Edge
+    "edge99",
+    "edge101",
+
+    # Safari
+    "safari153",
+    "safari155",
+    "safari170",
+    "safari172_ios",
+    "safari180",
+    "safari180_ios",
+    "safari184",
+    "safari184_ios",
+    "safari260",
+    "safari260_ios",
+
+    # Firefox / Tor
+    "firefox133",
+    "tor145",
+    ]
+
+    candidates: list[str] = []
+    for v in ([primary] if primary else []) + defaults:
+        if v and v not in candidates:
+            candidates.append(v)
+    return candidates
+
+
+IMPERSONATE_VERSION = _get_env_str("NS_IMPERSONATE", "chrome110")
+IMPERSONATE_CANDIDATES = _get_impersonate_candidates()
+
 # ---------------- 通知模块动态加载 ----------------
 hadsend = False
 send = None
@@ -20,6 +85,10 @@ except ImportError:
 # ---------------- 环境检测函数 ----------------
 def detect_environment():
     """检测当前运行环境"""
+    # 优先检测是否在 Docker 环境中
+    if os.environ.get("IN_DOCKER") == "true":
+        return "docker"
+        
     # 检测是否在青龙环境中
     ql_path_markers = ['/ql/data/', '/ql/config/', '/ql/', '/.ql/']
     in_ql_env = False
@@ -138,12 +207,31 @@ def save_cookie_to_ql(var_name: str, cookie: str):
         print(f"青龙面板环境变量操作异常: {str(e)}")
         return False
 
+# ---------------- Docker Cookie 文件保存 ----------------
+COOKIE_FILE_PATH = "./cookie/NS_COOKIE.txt"
+
+def save_cookie_to_file(cookie_str: str):
+    """将Cookie保存到文件"""
+    try:
+        # 确保目录存在
+        os.makedirs(os.path.dirname(COOKIE_FILE_PATH), exist_ok=True)
+        with open(COOKIE_FILE_PATH, "w") as f:
+            f.write(cookie_str)
+        print(f"Cookie 已成功保存到文件: {COOKIE_FILE_PATH}")
+        return True
+    except Exception as e:
+        print(f"保存Cookie到文件失败: {e}")
+        return False
+
 # ---------------- 统一变量保存函数 ----------------
 def save_cookie(var_name: str, cookie: str):
     """根据当前环境保存Cookie到相应位置"""
     env_type = detect_environment()
     
-    if env_type == "qinglong":
+    if env_type == "docker":
+        print("检测到Docker环境，保存Cookie到文件...")
+        return save_cookie_to_file(cookie)
+    elif env_type == "qinglong":
         print("检测到青龙环境，保存变量到青龙面板...")
         return save_cookie_to_ql(var_name, cookie)
     elif env_type == "github":
@@ -181,14 +269,17 @@ def session_login(user, password, solver_type, api_base_url, client_key):
         print(f"验证码错误: {e}")
         return None
 
-    session = requests.Session(impersonate="chrome110")
+    # 优先使用环境变量指定的 IMPERSONATE_VERSION（若未设置则使用默认值），作为首次尝试的指纹
+    initial_impersonate = IMPERSONATE_VERSION
+    session = requests.Session(impersonate=initial_impersonate)
+    print(f"[INFO] 使用初始 impersonate: {initial_impersonate}")
     session.get("https://www.nodeseek.com/signIn.html")
 
+    # NodeSeek 已改版登录接口：验证码 token 改走请求头 x-captcha-token / x-captcha-source，
+    # 请求体只保留 username/password（旧的 body 里放 token/source 会被拒：'"token" is not allowed'）
     data = {
         "username": user,
-        "password": password,
-        "token": token,
-        "source": "turnstile"
+        "password": password
     }
     headers = {
         'User-Agent': "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36 Edg/125.0.0.0",
@@ -201,7 +292,10 @@ def session_login(user, password, solver_type, api_base_url, client_key):
         'sec-fetch-dest': "empty",
         'referer': "https://www.nodeseek.com/signIn.html",
         'accept-language': "zh-CN,zh;q=0.9,en;q=0.8,en-GB;q=0.7,en-US;q=0.6",
-        'Content-Type': "application/json"
+        'Content-Type': "application/json",
+        # 验证码令牌走请求头（NodeSeek 前端真实行为）
+        'x-captcha-token': token,
+        'x-captcha-source': "turnstile"
     }
     try:
         response = session.post("https://www.nodeseek.com/api/account/signIn", json=data, headers=headers)
@@ -218,6 +312,37 @@ def session_login(user, password, solver_type, api_base_url, client_key):
         return None
 
 # ---------------- 签到逻辑 ----------------
+def _is_cloudflare_challenge(text: str) -> bool:
+    if not text:
+        return False
+    t = text.lower()
+    # 常见挑战页特征
+    return ("just a moment" in t) or ("cf-chl" in t) or ("challenge" in t and "cloudflare" in t)
+
+def _request_with_impersonate_fallback(method: str, url: str, *, headers: dict, json_data=None, timeout: int = 25):
+    last_resp = None
+    last_err = None
+    # 优先尝试 IMPERSONATE_VERSION，然后尝试 IMPERSONATE_CANDIDATES（去重）
+    ordered_candidates = [IMPERSONATE_VERSION] + [v for v in IMPERSONATE_CANDIDATES if v != IMPERSONATE_VERSION]
+    for ver in ordered_candidates:
+        try:
+            resp = requests.request(method, url, headers=headers, json=json_data, impersonate=ver, timeout=timeout)
+            last_resp = resp
+            if resp.status_code != 403:
+                return resp, ver, None
+            # 403：如果是 Cloudflare 挑战页特征，则尝试下一个指纹版本继续重试
+            if _is_cloudflare_challenge(resp.text):
+                print(f"[WARN] 403 Cloudflare challenge (impersonate={ver})，尝试切换指纹...")
+                continue
+            # 非挑战页 403，直接返回响应
+            return resp, ver, None
+        except Exception as e:
+            last_err = e
+            print(f"[WARN] 请求异常 (impersonate={ver}): {e}")
+            continue
+    # 所有候选都试过后返回最后一次响应或错误，并把最后尝试的指纹返回给调用方
+    return last_resp, (ordered_candidates[-1] if ordered_candidates else IMPERSONATE_VERSION), last_err
+
 def sign(ns_cookie, ns_random):
     if not ns_cookie:
         return "invalid", "无有效Cookie"
@@ -231,7 +356,18 @@ def sign(ns_cookie, ns_random):
     }
     try:
         url = f"https://www.nodeseek.com/api/attendance?random={ns_random}"
-        response = requests.post(url, headers=headers, impersonate="chrome110")
+        response, used_impersonate, req_err = _request_with_impersonate_fallback(
+            "POST", url, headers=headers, json_data={}, timeout=25
+        )
+        if req_err is not None:
+            return "error", f"请求异常: {req_err}"
+        if response is None:
+            return "error", "请求失败：无响应"
+        if response.status_code == 403:
+            # 仍然被拦截
+            if _is_cloudflare_challenge(response.text):
+                return "forbidden", f"403 Cloudflare challenge (最后尝试 impersonate={used_impersonate})"
+            return "forbidden", f"403 Forbidden (impersonate={used_impersonate})"
         data = response.json()
         msg = data.get("message", "")
         if "鸡腿" in msg or data.get("success"):
@@ -274,16 +410,23 @@ def get_signin_stats(ns_cookie, days=30):
         
         while page <= 20:  # 最多查询20页，防止无限循环
             url = f"https://www.nodeseek.com/api/account/credit/page-{page}"
-            response = requests.get(url, headers=headers, impersonate="chrome110")
+            response, used_impersonate, req_err = _request_with_impersonate_fallback(
+                "GET", url, headers=headers, json_data=None, timeout=25
+            )
+            if req_err is not None:
+                return None, f"请求异常: {req_err}"
+            if response is None:
+                return None, "请求失败：无响应"
+
             data = response.json()
-            
+
             if not data.get("success") or not data.get("data"):
                 break
-                
+
             records = data.get("data", [])
             if not records:
                 break
-                
+
             # 检查最后一条记录的时间，如果超出查询范围就停止
             last_record_time = datetime.fromisoformat(
                 records[-1][3].replace('Z', '+00:00'))
@@ -299,7 +442,7 @@ def get_signin_stats(ns_cookie, days=30):
                 break
             else:
                 all_records.extend(records)
-                
+
             page += 1
             time.sleep(0.5)
         
@@ -393,7 +536,21 @@ if __name__ == "__main__":
             break
     
     # 读取现有Cookie
-    all_cookies = os.getenv("NS_COOKIE", "")
+    all_cookies = ""
+    if detect_environment() == "docker":
+        print(f"Docker环境，尝试从 {COOKIE_FILE_PATH} 读取Cookie...")
+        if os.path.exists(COOKIE_FILE_PATH):
+            try:
+                with open(COOKIE_FILE_PATH, "r") as f:
+                    all_cookies = f.read().strip()
+                print("成功从文件加载Cookie。")
+            except Exception as e:
+                print(f"从文件读取Cookie失败: {e}")
+        else:
+            print("Cookie文件不存在，将使用空Cookie。")
+    else:
+        all_cookies = os.getenv("NS_COOKIE", "")
+        
     cookie_list = all_cookies.split("&")
     cookie_list = [c.strip() for c in cookie_list if c.strip()]
     

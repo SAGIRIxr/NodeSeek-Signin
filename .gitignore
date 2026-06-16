@@ -1,0 +1,10 @@
+# 本地测试/敏感信息，禁止提交
+*环境变量*.txt
+*.env
+.env
+cookie/
+NS_COOKIE.txt
+
+# Python
+__pycache__/
+*.pyc
