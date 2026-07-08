@@ -6,6 +6,7 @@ from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 from curl_cffi import requests
 from yescaptcha import YesCaptchaSolver, YesCaptchaSolverError
+from twocaptcha import TwoCaptchaSolver, TwoCaptchaSolverError
 from turnstile_solver import TurnstileSolver, TurnstileSolverError
 
 def _get_env_str(name: str, default: str = "") -> str:
@@ -245,6 +246,12 @@ def session_login(user, password, solver_type, api_base_url, client_key):
             print("正在使用 YesCaptcha 解决验证码...")
             solver = YesCaptchaSolver(
                 api_base_url=api_base_url or "https://api.yescaptcha.com",
+                client_key=client_key
+            )
+        elif solver_type.lower() in ("2captcha", "twocaptcha"):
+            print("正在使用 2Captcha 解决验证码...")
+            solver = TwoCaptchaSolver(
+                api_base_url=api_base_url or "https://api.2captcha.com",
                 client_key=client_key
             )
         else:  # 默认使用 turnstile_solver
@@ -516,16 +523,22 @@ if __name__ == "__main__":
     
     accounts = []
 
+    def _get_account(suffix: str):
+        """读取账号配置：优先 NS_USER*/NS_PASS*（避免与系统变量 USER 冲突），旧变量名 USER*/PASS* 仍兼容。"""
+        u = os.getenv(f"NS_USER{suffix}")
+        p = os.getenv(f"NS_PASS{suffix}")
+        if u and p:
+            return u, p
+        return os.getenv(f"USER{suffix}"), os.getenv(f"PASS{suffix}")
+
     # 先收集账号密码配置
-    user = os.getenv("USER")
-    password = os.getenv("PASS")
+    user, password = _get_account("")
     if user and password:
         accounts.append({"user": user, "password": password})
 
     index = 1
     while True:
-        user = os.getenv(f"USER{index}")
-        password = os.getenv(f"PASS{index}")
+        user, password = _get_account(str(index))
         if user and password:
             accounts.append({"user": user, "password": password})
             index += 1

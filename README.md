@@ -37,8 +37,8 @@
 | 变量名称 | 必要性 | 说明 |
 | :------: | :----: | :--- |
 | `NS_COOKIE` | **建议** | NodeSeek 论坛的用户 Cookie，可在浏览器开发者工具(F12)的网络请求中获取，多账号用`&`或换行符分隔 |
-| `USER`/`USER1` | 可选 | NodeSeek 论坛用户名，当 Cookie 失效时使用 |
-| `PASS`/`PASS1` | 可选 | NodeSeek 论坛密码 |
+| `NS_USER`/`NS_USER1` | 可选 | NodeSeek 论坛用户名，当 Cookie 失效时使用（旧变量名 `USER`/`USER1` 仍兼容，但易与系统变量冲突，推荐 `NS_` 前缀） |
+| `NS_PASS`/`NS_PASS1` | 可选 | NodeSeek 论坛密码（旧变量名 `PASS`/`PASS1` 仍兼容） |
 | `TG_BOT_TOKEN` | 可选 | Telegram 机器人的 Token，用于通知签到结果 |
 | `TG_USER_ID` | 可选 | Telegram 用户 ID，用于接收通知 |
 | `TG_THREAD_ID` | 可选 | Telegram 超级群组话题 ID，用于在特定话题中发送通知 |
@@ -72,8 +72,8 @@ docker run -itd   --name cloudflyer   -p 3000:3000   --restart unless-stopped   
 | :------: | :--- |
 | `API_BASE_URL` | CloudFreed 服务地址，如 `http://192.168.1.100:3000` |
 | `CLIENTT_KEY` | CloudFreed 服务的客户端密钥 |
-| `USER1`/`USER2`... | NodeSeek 论坛用户名 |
-| `PASS1`/`PASS2`... | NodeSeek 论坛密码 |
+| `NS_USER1`/`NS_USER2`... | NodeSeek 论坛用户名 |
+| `NS_PASS1`/`NS_PASS2`... | NodeSeek 论坛密码 |
 | `SOLVER_TYPE` | 设置为 `turnstile`（默认值） |
 
 #### 方案B：YesCaptcha 商业服务（推荐无法自建服务的用户）
@@ -85,13 +85,26 @@ docker run -itd   --name cloudflyer   -p 3000:3000   --restart unless-stopped   
 | 变量名称 | 说明 |
 | :------: | :--- |
 | `CLIENTT_KEY` | YesCaptcha 的 API 密钥 |
-| `USER1`/`USER2`... | NodeSeek 论坛用户名 |
-| `PASS1`/`PASS2`... | NodeSeek 论坛密码 |
+| `NS_USER1`/`NS_USER2`... | NodeSeek 论坛用户名 |
+| `NS_PASS1`/`NS_PASS2`... | NodeSeek 论坛密码 |
 | `SOLVER_TYPE` | 设置为 `yescaptcha` |
 
 > **提示**：YesCaptcha 提供两个服务节点，可根据网络情况选择：
 > - 国际节点：`https://api.yescaptcha.com`（默认）
 > - 国内节点：`https://cn.yescaptcha.com`
+
+#### 方案C：2Captcha 商业服务
+
+1. 访问 [2Captcha](https://2captcha.com/) 注册账号并充值
+2. 在控制台获取 API 密钥
+3. 配置以下环境变量：
+
+| 变量名称 | 说明 |
+| :------: | :--- |
+| `CLIENTT_KEY` | 2Captcha 的 API 密钥 |
+| `NS_USER1`/`NS_USER2`... | NodeSeek 论坛用户名 |
+| `NS_PASS1`/`NS_PASS2`... | NodeSeek 论坛密码 |
+| `SOLVER_TYPE` | 设置为 `2captcha` |
 
 ### 多账号配置方法
 
@@ -117,21 +130,21 @@ Cookie3
 
 ```
 # 第一个账号
-USER1=用户名1
-PASS1=密码1
+NS_USER1=用户名1
+NS_PASS1=密码1
 
 # 第二个账号
-USER2=用户名2
-PASS2=密码2
+NS_USER2=用户名2
+NS_PASS2=密码2
 
 # 第三个账号
-USER3=用户名3
-PASS3=密码3
+NS_USER3=用户名3
+NS_PASS3=密码3
 
 # 依此类推...
 ```
 
-> **注意**：基本的 `USER` 和 `PASS` 变量也会被识别，系统会自动检测所有设置的账号，并依次执行签到操作。
+> **注意**：基本的 `NS_USER` 和 `NS_PASS` 变量也会被识别，系统会自动检测所有设置的账号，并依次执行签到操作。旧变量名 `USER*`/`PASS*` 仍然兼容，但在 Linux/青龙环境下容易与系统变量 `USER` 冲突，推荐使用 `NS_` 前缀；两者同时存在时优先使用 `NS_` 前缀的变量。
 
 ## 🔑 GitHub Personal Access Token 设置
 
@@ -169,10 +182,10 @@ PASS3=密码3
 | 变量名称 | 必要性 | 默认值 | 说明 |
 | :------: | :----: | :----: | :--- |
 | `NS_COOKIE` | 建议 | - | NodeSeek 论坛的用户 Cookie，多账号使用`&`或换行符分隔 |
-| `USER1`、`USER2`... | 可选 | - | NodeSeek 论坛用户名，当 Cookie 失效时使用 |
-| `PASS1`、`PASS2`... | 可选 | - | NodeSeek 论坛密码 |
+| `NS_USER1`、`NS_USER2`... | 可选 | - | NodeSeek 论坛用户名，当 Cookie 失效时使用（旧名 `USER*` 兼容） |
+| `NS_PASS1`、`NS_PASS2`... | 可选 | - | NodeSeek 论坛密码（旧名 `PASS*` 兼容） |
 | `NS_RANDOM` | 可选 | true | 是否随机签到（true/false） |
-| `SOLVER_TYPE` | 可选 | turnstile | 验证码解决方案（turnstile/yescaptcha） |
+| `SOLVER_TYPE` | 可选 | turnstile | 验证码解决方案（turnstile/yescaptcha/2captcha） |
 | `API_BASE_URL` | 条件必需 | - | CloudFreed 服务地址，当 SOLVER_TYPE=turnstile 时必填 |
 | `CLIENTT_KEY` | 必需 | - | 验证码服务客户端密钥 |
 | `GH_PAT` | 可选 | - | GitHub Personal Access Token，用于自动更新Cookie变量 |
@@ -184,6 +197,7 @@ PASS3=密码3
 | :--: | :--: | :--- | :--- | :------: |
 | CloudFreed | 自建服务 | 免费、无次数限制 | 需要自行部署维护 | ★★★★☆ |
 | YesCaptcha | 商业服务 | 稳定可靠、易于配置 | 付费服务（有免费额度） | ★★★★★ |
+| 2Captcha | 商业服务 | 老牌平台、稳定可靠 | 付费服务 | ★★★★☆ |
 
 ## ⚠️ 免责声明
 
