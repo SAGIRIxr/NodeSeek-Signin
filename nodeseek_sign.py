@@ -7,6 +7,7 @@ from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 from curl_cffi import requests
 from yescaptcha import YesCaptchaSolver, YesCaptchaSolverError
+from twocaptcha import TwoCaptchaSolver, TwoCaptchaSolverError
 from turnstile_solver import TurnstileSolver, TurnstileSolverError
 # ---------------- 通知模块动态加载 ----------------
 hadsend = False
@@ -100,9 +101,6 @@ def delete_ql_env(var_name: str):
         else:
             print(f"未找到环境变量: {var_name}")
             return True
-    except (TurnstileSolverError, YesCaptchaSolverError) as e:
-        print(f"验证码解析错误: {e}")
-        return None
     except Exception as e:
         print(f"删除环境变量异常: {str(e)}")
         return False
@@ -162,6 +160,12 @@ def session_login(user, password, solver_type, api_base_url, client_key):
                 api_base_url=api_base_url or "https://api.yescaptcha.com",
                 client_key=client_key
             )
+        elif solver_type.lower() in ("2captcha", "twocaptcha"):
+            print("正在使用 2Captcha 解决验证码...")
+            solver = TwoCaptchaSolver(
+                api_base_url=api_base_url or "https://api.2captcha.com",
+                client_key=client_key
+            )
         else:  # 默认使用 turnstile_solver
             print("正在使用 TurnstileSolver 解决验证码...")
             solver = TurnstileSolver(
@@ -184,11 +188,11 @@ def session_login(user, password, solver_type, api_base_url, client_key):
     session = requests.Session(impersonate="chrome110")
     session.get("https://www.nodeseek.com/signIn.html")
 
+    # NodeSeek 已改版登录接口：验证码 token 改走请求头 x-captcha-token / x-captcha-source，
+    # 请求体只保留 username/password（旧的 body 里放 token/source 会被拒：'"token" is not allowed'）
     data = {
         "username": user,
-        "password": password,
-        "token": token,
-        "source": "turnstile"
+        "password": password
     }
     headers = {
         'User-Agent': "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36 Edg/125.0.0.0",
@@ -201,7 +205,10 @@ def session_login(user, password, solver_type, api_base_url, client_key):
         'sec-fetch-dest': "empty",
         'referer': "https://www.nodeseek.com/signIn.html",
         'accept-language': "zh-CN,zh;q=0.9,en;q=0.8,en-GB;q=0.7,en-US;q=0.6",
-        'Content-Type': "application/json"
+        'Content-Type': "application/json",
+        # 验证码令牌走请求头（NodeSeek 前端真实行为）
+        'x-captcha-token': token,
+        'x-captcha-source': "turnstile"
     }
     try:
         response = session.post("https://www.nodeseek.com/api/account/signIn", json=data, headers=headers)
@@ -493,7 +500,9 @@ if __name__ == "__main__":
         print("\n==== 处理完毕，保存更新后的Cookie ====")
         all_cookies_new = "&".join([c for c in cookie_list if c.strip()])
         try:
-            save_cookie("NS_COOKIE", all_cookies_new)
-            print("所有Cookie已成功保存")
+            if save_cookie("NS_COOKIE", all_cookies_new):
+                print("所有Cookie已成功保存")
+            else:
+                print("Cookie未保存（当前环境不支持保存或保存失败，详见上方日志）")
         except Exception as e:
             print(f"保存Cookie变量异常: {e}")

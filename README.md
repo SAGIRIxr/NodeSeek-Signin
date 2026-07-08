@@ -92,6 +92,19 @@ docker run -itd   --name cloudflyer   -p 3000:3000   --restart unless-stopped   
 > - 国际节点：`https://api.yescaptcha.com`（默认）
 > - 国内节点：`https://cn.yescaptcha.com`
 
+#### 方案C：2Captcha 商业服务
+
+1. 访问 [2Captcha](https://2captcha.com/) 注册账号并充值
+2. 在控制台获取 API 密钥
+3. 配置以下环境变量：
+
+| 变量名称 | 说明 |
+| :------: | :--- |
+| `CLIENTT_KEY` | 2Captcha 的 API 密钥 |
+| `USER1`/`USER2`... | NodeSeek 论坛用户名 |
+| `PASS1`/`PASS2`... | NodeSeek 论坛密码 |
+| `SOLVER_TYPE` | 设置为 `2captcha` |
+
 ### 多账号配置方法
 
 本脚本支持多账号签到，配置方法如下：
@@ -171,7 +184,7 @@ PASS3=密码3
 | `USER1`、`USER2`... | 可选 | - | NodeSeek 论坛用户名，当 Cookie 失效时使用 |
 | `PASS1`、`PASS2`... | 可选 | - | NodeSeek 论坛密码 |
 | `NS_RANDOM` | 可选 | true | 是否随机签到（true/false） |
-| `SOLVER_TYPE` | 可选 | turnstile | 验证码解决方案（turnstile/yescaptcha） |
+| `SOLVER_TYPE` | 可选 | turnstile | 验证码解决方案（turnstile/yescaptcha/2captcha） |
 | `API_BASE_URL` | 条件必需 | - | CloudFreed 服务地址，当 SOLVER_TYPE=turnstile 时必填 |
 | `CLIENTT_KEY` | 必需 | - | 验证码服务客户端密钥 |
 | `GH_PAT` | 可选 | - | GitHub Personal Access Token，用于自动更新Cookie变量 |
@@ -183,6 +196,7 @@ PASS3=密码3
 | :--: | :--: | :--- | :--- | :------: |
 | CloudFreed | 自建服务 | 免费、无次数限制 | 需要自行部署维护 | ★★★★☆ |
 | YesCaptcha | 商业服务 | 稳定可靠、易于配置 | 付费服务（有免费额度） | ★★★★★ |
+| 2Captcha | 商业服务 | 老牌平台、稳定可靠 | 付费服务 | ★★★★☆ |
 
 ## ⚠️ 免责声明
 
