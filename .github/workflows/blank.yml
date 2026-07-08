@@ -31,11 +31,9 @@ jobs:
 
       - name: 运行签到脚本
         env:
-          # 基本账号（推荐使用 NS_ 前缀，避免与系统变量 USER 冲突；旧变量名仍兼容）
+          # 基本账号（NS_ 前缀，避免与系统变量 USER 冲突）
           NS_USER: ${{ secrets.NS_USER }}
           NS_PASS: ${{ secrets.NS_PASS }}
-          USER: ${{ secrets.USER }}
-          PASS: ${{ secrets.PASS }}
 
           # 额外账号1-5
           NS_USER1: ${{ secrets.NS_USER1 }}
@@ -48,16 +46,6 @@ jobs:
           NS_PASS4: ${{ secrets.NS_PASS4 }}
           NS_USER5: ${{ secrets.NS_USER5 }}
           NS_PASS5: ${{ secrets.NS_PASS5 }}
-          USER1: ${{ secrets.USER1 }}
-          PASS1: ${{ secrets.PASS1 }}
-          USER2: ${{ secrets.USER2 }}
-          PASS2: ${{ secrets.PASS2 }}
-          USER3: ${{ secrets.USER3 }}
-          PASS3: ${{ secrets.PASS3 }}
-          USER4: ${{ secrets.USER4 }}
-          PASS4: ${{ secrets.PASS4 }}
-          USER5: ${{ secrets.USER5 }}
-          PASS5: ${{ secrets.PASS5 }}
           
           # Cookie配置
           NS_COOKIE: ${{ vars.NS_COOKIE || secrets.NS_COOKIE }}

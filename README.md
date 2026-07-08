@@ -37,8 +37,8 @@
 | 变量名称 | 必要性 | 说明 |
 | :------: | :----: | :--- |
 | `NS_COOKIE` | **建议** | NodeSeek 论坛的用户 Cookie，可在浏览器开发者工具(F12)的网络请求中获取，多账号用`&`或换行符分隔 |
-| `NS_USER`/`NS_USER1` | 可选 | NodeSeek 论坛用户名，当 Cookie 失效时使用（旧变量名 `USER`/`USER1` 仍兼容，但易与系统变量冲突，推荐 `NS_` 前缀） |
-| `NS_PASS`/`NS_PASS1` | 可选 | NodeSeek 论坛密码（旧变量名 `PASS`/`PASS1` 仍兼容） |
+| `NS_USER`/`NS_USER1` | 可选 | NodeSeek 论坛用户名，当 Cookie 失效时使用 |
+| `NS_PASS`/`NS_PASS1` | 可选 | NodeSeek 论坛密码 |
 | `TG_BOT_TOKEN` | 可选 | Telegram 机器人的 Token，用于通知签到结果 |
 | `TG_USER_ID` | 可选 | Telegram 用户 ID，用于接收通知 |
 | `TG_THREAD_ID` | 可选 | Telegram 超级群组话题 ID，用于在特定话题中发送通知 |
@@ -144,7 +144,7 @@ NS_PASS3=密码3
 # 依此类推...
 ```
 
-> **注意**：基本的 `NS_USER` 和 `NS_PASS` 变量也会被识别，系统会自动检测所有设置的账号，并依次执行签到操作。旧变量名 `USER*`/`PASS*` 仍然兼容，但在 Linux/青龙环境下容易与系统变量 `USER` 冲突，推荐使用 `NS_` 前缀；两者同时存在时优先使用 `NS_` 前缀的变量。
+> **注意**：基本的 `NS_USER` 和 `NS_PASS` 变量也会被识别，系统会自动检测所有设置的账号，并依次执行签到操作。变量名必须带 `NS_` 前缀（不带前缀的 `USER` 在 Linux/青龙环境下会与系统变量冲突，已不再支持）。
 
 ## 🔑 GitHub Personal Access Token 设置
 
@@ -182,8 +182,8 @@ NS_PASS3=密码3
 | 变量名称 | 必要性 | 默认值 | 说明 |
 | :------: | :----: | :----: | :--- |
 | `NS_COOKIE` | 建议 | - | NodeSeek 论坛的用户 Cookie，多账号使用`&`或换行符分隔 |
-| `NS_USER1`、`NS_USER2`... | 可选 | - | NodeSeek 论坛用户名，当 Cookie 失效时使用（旧名 `USER*` 兼容） |
-| `NS_PASS1`、`NS_PASS2`... | 可选 | - | NodeSeek 论坛密码（旧名 `PASS*` 兼容） |
+| `NS_USER1`、`NS_USER2`... | 可选 | - | NodeSeek 论坛用户名，当 Cookie 失效时使用 |
+| `NS_PASS1`、`NS_PASS2`... | 可选 | - | NodeSeek 论坛密码 |
 | `NS_RANDOM` | 可选 | true | 是否随机签到（true/false） |
 | `SOLVER_TYPE` | 可选 | turnstile | 验证码解决方案（turnstile/yescaptcha/2captcha） |
 | `API_BASE_URL` | 条件必需 | - | CloudFreed 服务地址，当 SOLVER_TYPE=turnstile 时必填 |

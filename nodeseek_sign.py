@@ -524,12 +524,8 @@ if __name__ == "__main__":
     accounts = []
 
     def _get_account(suffix: str):
-        """读取账号配置：优先 NS_USER*/NS_PASS*（避免与系统变量 USER 冲突），旧变量名 USER*/PASS* 仍兼容。"""
-        u = os.getenv(f"NS_USER{suffix}")
-        p = os.getenv(f"NS_PASS{suffix}")
-        if u and p:
-            return u, p
-        return os.getenv(f"USER{suffix}"), os.getenv(f"PASS{suffix}")
+        """读取账号配置：使用 NS_USER*/NS_PASS*（带 NS_ 前缀，避免与系统变量 USER 冲突）。"""
+        return os.getenv(f"NS_USER{suffix}"), os.getenv(f"NS_PASS{suffix}")
 
     # 先收集账号密码配置
     user, password = _get_account("")
